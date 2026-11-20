@@ -1,20 +1,31 @@
-// Neon Coast Cover Studio — editor wiring.
+// Neon Coast Cover Studio — editor wiring (round 3).
 // Uploads the user's own photos (read locally with FileReader, never sent
 // anywhere), crops and positions each panel by drag / wheel / slider, fills
-// several panels from one photo or several, edits the caption and subtitle,
-// picks layout, grade and export size, exports a PNG, and keeps undo/redo.
-import { drawCover, layoutPanels, panelCount, LAYOUTS, GRADES, SIZES } from './cover.js';
+// several panels from one photo or several, edits the caption, subtitle,
+// tagline, badge and heat meter, picks layout and grade, tags each panel
+// with a crew role, toggles face-aware smart crop and Poster Ink, adds
+// poster furniture (billing block, seal, quote bar), exports one PNG or
+// all three post sizes in one click, and keeps undo/redo for 60 steps.
+import { drawCover, layoutPanels, panelCount, LAYOUTS, GRADES, SIZES, ROLE_PRESETS } from './cover.js';
 import { runShot } from './shots.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('cover');
 const captionInput = $('caption');
 const subtitleInput = $('subtitle');
+const taglineInput = $('tagline');
 const badgeInput = $('badge');
+const billingInput = $('billing');
+const sealInput = $('seal');
+const quoteInput = $('quote');
 const statusEl = $('status');
 const filmstrip = $('filmstrip');
 const panelLabel = $('panelLabel');
 const zoomRange = $('zoomRange');
+const roleSelect = $('roleSelect');
+const smartCropToggle = $('smartCropToggle');
+const inkToggle = $('inkToggle');
+const popoutToggle = $('popoutToggle');
 
 const SAMPLE_PHOTOS = ['samples/boulevard.jpg', 'samples/pier.jpg'];
 
@@ -29,14 +40,22 @@ const state = {
   grade: 'sunset',
   caption: 'NEON COAST',
   subtitle: 'chase the sunset',
+  tagline: 'LEONIDA · 2026',
   badge: 'COVER STAR',
   wanted: 5,
   size: '1080x1080',
+  ink: false,
+  popout: true,
+  billing: 'A NEON COAST PRODUCTION · STARRING YOU · IN CINEMAS SOON',
+  seal: 'VICE CITY',
+  quote: '',
   slots: defaultSlots('hero'),
 };
 
 function defaultSlots(layout) {
-  return Array.from({ length: panelCount(layout) }, () => ({ photo: -1, zoom: 1, dx: 0, dy: 0 }));
+  return Array.from({ length: panelCount(layout) }, () => ({
+    photo: -1, zoom: 1, dx: 0, dy: 0, role: '', smartCrop: false, ink: false,
+  }));
 }
 
 function snapshot() {
@@ -45,9 +64,15 @@ function snapshot() {
     grade: state.grade,
     caption: state.caption,
     subtitle: state.subtitle,
+    tagline: state.tagline,
     badge: state.badge,
     wanted: state.wanted,
     size: state.size,
+    ink: state.ink,
+    popout: state.popout,
+    billing: state.billing,
+    seal: state.seal,
+    quote: state.quote,
     slots: state.slots,
   });
 }
@@ -135,6 +160,8 @@ async function loadSamples() {
   // Default fill: alternate the two samples across the panels.
   state.slots.forEach((slot, i) => {
     slot.photo = photos.length ? i % photos.length : -1;
+    slot.smartCrop = true;
+    slot.ink = state.ink;
   });
   selectedPhoto = 0;
   renderFilmstrip();
@@ -198,30 +225,45 @@ function renderFilmstrip() {
   filmstrip.appendChild(empty);
 }
 
-function redraw() {
-  const size = SIZES[state.size] || SIZES['1080x1080'];
-  if (canvas.width !== size.w || canvas.height !== size.h) {
-    canvas.width = size.w;
-    canvas.height = size.h;
-  }
-  drawCover(canvas, {
+function coverOpts() {
+  return {
     photos: photos.map((p) => p.img),
     slots: state.slots,
     layout: state.layout,
     grade: state.grade,
     caption: state.caption,
     subtitle: state.subtitle,
+    tagline: state.tagline,
     badge: state.badge,
     wanted: state.wanted,
-  });
+    ink: state.ink,
+    popout: state.popout,
+    billing: state.billing,
+    seal: state.seal,
+    quote: state.quote,
+  };
+}
+
+function redraw() {
+  const size = SIZES[state.size] || SIZES['1080x1080'];
+  if (canvas.width !== size.w || canvas.height !== size.h) {
+    canvas.width = size.w;
+    canvas.height = size.h;
+  }
+  drawCover(canvas, coverOpts());
   updatePanelLabel();
 }
 
 function updatePanelLabel() {
   const slot = state.slots[selectedPanel];
   const name = slot && slot.photo >= 0 && photos[slot.photo] ? photos[slot.photo].name : 'empty';
-  panelLabel.textContent = `Panel ${selectedPanel + 1} of ${state.slots.length} · ${name} · zoom ${((slot && slot.zoom) || 1).toFixed(2)}×`;
-  if (slot) zoomRange.value = String(Math.round(((slot.zoom || 1) - 1) * 100));
+  const role = slot && slot.role ? ` · ${slot.role}` : '';
+  panelLabel.textContent = `Panel ${selectedPanel + 1} of ${state.slots.length} · ${name} · zoom ${((slot && slot.zoom) || 1).toFixed(2)}×${role}`;
+  if (slot) {
+    zoomRange.value = String(Math.round(((slot.zoom || 1) - 1) * 100));
+    roleSelect.value = slot.role || '';
+    smartCropToggle.checked = !!slot.smartCrop;
+  }
 }
 
 function setStatus(text) {
@@ -231,7 +273,13 @@ function setStatus(text) {
 function syncControls() {
   captionInput.value = state.caption;
   subtitleInput.value = state.subtitle;
+  taglineInput.value = state.tagline;
   badgeInput.value = state.badge;
+  billingInput.value = state.billing;
+  sealInput.value = state.seal;
+  quoteInput.value = state.quote;
+  inkToggle.checked = state.ink;
+  popoutToggle.checked = state.popout;
   $('wantedRange').value = String(state.wanted);
   $('wantedValue').textContent = '★'.repeat(state.wanted) + '☆'.repeat(5 - state.wanted);
   $('sizeSelect').value = state.size;
@@ -253,9 +301,16 @@ function setLayout(layout) {
   const old = state.slots;
   state.layout = layout;
   state.slots = defaultSlots(layout);
-  // Keep each panel's photo where a same-index panel exists.
+  // Keep each panel's photo, role and crop where a same-index panel exists.
   state.slots.forEach((slot, i) => {
-    if (old[i]) slot.photo = old[i].photo;
+    if (old[i]) {
+      slot.photo = old[i].photo;
+      slot.role = old[i].role || '';
+      slot.smartCrop = !!old[i].smartCrop;
+      slot.zoom = old[i].zoom || 1;
+      slot.dx = old[i].dx || 0;
+      slot.dy = old[i].dy || 0;
+    }
   });
   selectedPanel = 0;
   syncControls();
@@ -276,7 +331,10 @@ function usePhotoInSelectedPanel() {
     return;
   }
   pushHistory();
-  state.slots[selectedPanel] = { photo: selectedPhoto, zoom: 1, dx: 0, dy: 0 };
+  state.slots[selectedPanel] = {
+    photo: selectedPhoto, zoom: 1, dx: 0, dy: 0,
+    role: state.slots[selectedPanel].role || '', smartCrop: true, ink: state.ink,
+  };
   redraw();
   setStatus(`Panel ${selectedPanel + 1} ← ${photos[selectedPhoto].name}`);
 }
@@ -292,6 +350,8 @@ function fillAllWithPhoto() {
     slot.zoom = 1;
     slot.dx = 0;
     slot.dy = 0;
+    slot.smartCrop = true;
+    slot.ink = state.ink;
   });
   redraw();
   setStatus(`All panels ← ${photos[selectedPhoto].name}`);
@@ -299,7 +359,7 @@ function fillAllWithPhoto() {
 
 function clearSelectedPanel() {
   pushHistory();
-  state.slots[selectedPanel] = { photo: -1, zoom: 1, dx: 0, dy: 0 };
+  state.slots[selectedPanel] = { photo: -1, zoom: 1, dx: 0, dy: 0, role: '', smartCrop: false, ink: state.ink };
   redraw();
 }
 
@@ -366,35 +426,52 @@ function bindCanvas() {
   }, { passive: false });
 }
 
-function exportPNG() {
-  const size = SIZES[state.size] || SIZES['1080x1080'];
+function downloadCanvas(off, size) {
+  return new Promise((resolve) => {
+    off.toBlob((blob) => {
+      if (!blob) {
+        setStatus('Export failed — try again.');
+        resolve(false);
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `neon-coast-cover-${size.w}x${size.h}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      resolve(true);
+    }, 'image/png');
+  });
+}
+
+function renderSize(sizeKey) {
+  const size = SIZES[sizeKey];
   const off = document.createElement('canvas');
   off.width = size.w;
   off.height = size.h;
-  drawCover(off, {
-    photos: photos.map((p) => p.img),
-    slots: state.slots,
-    layout: state.layout,
-    grade: state.grade,
-    caption: state.caption,
-    subtitle: state.subtitle,
-    badge: state.badge,
-    wanted: state.wanted,
-  });
-  off.toBlob((blob) => {
-    if (!blob) {
-      setStatus('Export failed — try again.');
-      return;
-    }
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `neon-coast-cover-${size.w}x${size.h}.png`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    setStatus(`Saved neon-coast-cover-${size.w}x${size.h}.png`);
-  }, 'image/png');
+  drawCover(off, coverOpts());
+  return { off, size };
+}
+
+async function exportPNG() {
+  const { off, size } = renderSize(state.size);
+  const ok = await downloadCanvas(off, size);
+  if (ok) setStatus(`Saved neon-coast-cover-${size.w}x${size.h}.png`);
+}
+
+/** Exports all three post sizes in one click. */
+async function exportAllPNG() {
+  const keys = Object.keys(SIZES);
+  let saved = 0;
+  for (const key of keys) {
+    const { off, size } = renderSize(key);
+    if (await downloadCanvas(off, size)) saved++;
+    // A short pause between downloads so the browser keeps all three.
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  setStatus(saved === keys.length ? `Saved all ${saved} sizes.` : `Saved ${saved} of ${keys.length} sizes.`);
 }
 
 function bindControls() {
@@ -417,6 +494,33 @@ function bindControls() {
   document.querySelectorAll('[data-grade]').forEach((b) => {
     b.addEventListener('click', () => setGrade(b.dataset.grade));
   });
+  roleSelect.addEventListener('change', () => {
+    const slot = state.slots[selectedPanel];
+    if (!slot) return;
+    pushHistory();
+    slot.role = roleSelect.value;
+    redraw();
+    updatePanelLabel();
+  });
+  smartCropToggle.addEventListener('change', () => {
+    const slot = state.slots[selectedPanel];
+    if (!slot) return;
+    pushHistory();
+    slot.smartCrop = smartCropToggle.checked;
+    redraw();
+    updatePanelLabel();
+  });
+  inkToggle.addEventListener('change', () => {
+    pushHistory();
+    state.ink = inkToggle.checked;
+    state.slots.forEach((slot) => { slot.ink = state.ink; });
+    redraw();
+  });
+  popoutToggle.addEventListener('change', () => {
+    pushHistory();
+    state.popout = popoutToggle.checked;
+    redraw();
+  });
   captionInput.addEventListener('input', () => {
     state.caption = captionInput.value;
     redraw();
@@ -427,11 +531,31 @@ function bindControls() {
     redraw();
   });
   subtitleInput.addEventListener('change', pushHistory);
+  taglineInput.addEventListener('input', () => {
+    state.tagline = taglineInput.value;
+    redraw();
+  });
+  taglineInput.addEventListener('change', pushHistory);
   badgeInput.addEventListener('input', () => {
     state.badge = badgeInput.value;
     redraw();
   });
   badgeInput.addEventListener('change', pushHistory);
+  billingInput.addEventListener('input', () => {
+    state.billing = billingInput.value;
+    redraw();
+  });
+  billingInput.addEventListener('change', pushHistory);
+  sealInput.addEventListener('input', () => {
+    state.seal = sealInput.value;
+    redraw();
+  });
+  sealInput.addEventListener('change', pushHistory);
+  quoteInput.addEventListener('input', () => {
+    state.quote = quoteInput.value;
+    redraw();
+  });
+  quoteInput.addEventListener('change', pushHistory);
   $('wantedRange').addEventListener('input', () => {
     state.wanted = Number($('wantedRange').value);
     $('wantedValue').textContent = '★'.repeat(state.wanted) + '☆'.repeat(5 - state.wanted);
@@ -444,6 +568,7 @@ function bindControls() {
     redraw();
   });
   $('exportBtn').addEventListener('click', exportPNG);
+  $('exportAllBtn').addEventListener('click', exportAllPNG);
   $('undoBtn').addEventListener('click', undo);
   $('redoBtn').addEventListener('click', redo);
   document.addEventListener('keydown', (e) => {
@@ -467,9 +592,15 @@ async function applyScene(scene) {
   }
   if (scene.caption !== undefined) state.caption = scene.caption;
   if (scene.subtitle !== undefined) state.subtitle = scene.subtitle;
+  if (scene.tagline !== undefined) state.tagline = scene.tagline;
   if (scene.badge !== undefined) state.badge = scene.badge;
+  if (scene.billing !== undefined) state.billing = scene.billing;
+  if (scene.seal !== undefined) state.seal = scene.seal;
+  if (scene.quote !== undefined) state.quote = scene.quote;
   if (scene.grade) state.grade = scene.grade;
   if (scene.wanted) state.wanted = scene.wanted;
+  if (scene.ink !== undefined) state.ink = scene.ink;
+  if (scene.popout !== undefined) state.popout = scene.popout;
   if (scene.photos) {
     photos = [];
     photoSeq = 0;
@@ -489,6 +620,9 @@ async function applyScene(scene) {
       } else {
         slot.photo = i % photos.length;
       }
+      slot.smartCrop = scene.smartCrop !== false;
+      slot.ink = state.ink;
+      if (scene.roles && scene.roles[i]) slot.role = scene.roles[i];
     });
   }
   try {

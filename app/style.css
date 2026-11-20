@@ -25,6 +25,7 @@
   --orange: #ff9a3c;
   --teal: #00e5d4;
   --gold: #ffd166;
+  --violet: #7b5cff;
   --accent: var(--pink);
 }
 
@@ -148,6 +149,10 @@ body {
 .choice.grade-neon.active { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal), 0 0 14px rgba(0, 229, 212, 0.4); }
 .choice.grade-gold.active { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 14px rgba(255, 209, 102, 0.4); }
 .choice.grade-noir.active { border-color: #e8e8e8; box-shadow: 0 0 0 1px #e8e8e8, 0 0 14px rgba(232, 232, 232, 0.3); }
+.choice.grade-twilight.active { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet), 0 0 14px rgba(123, 92, 255, 0.4); }
+.choice.grade-vice.active { border-color: #ff5fa2; box-shadow: 0 0 0 1px #ff5fa2, 0 0 14px rgba(255, 95, 162, 0.4); }
+.choice.grade-tealheat.active { border-color: #ff6b35; box-shadow: 0 0 0 1px #ff6b35, 0 0 14px rgba(255, 107, 53, 0.4); }
+.choice.grade-mono.active { border-color: #ffffff; box-shadow: 0 0 0 1px #ffffff, 0 0 14px rgba(255, 255, 255, 0.35); }
 
 label {
   display: block;
@@ -155,6 +160,23 @@ label {
   font-weight: 600;
   color: var(--muted);
   margin-bottom: 10px;
+}
+
+label.check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+label.check input[type="checkbox"] {
+  accent-color: var(--pink);
+  width: 16px;
+  height: 16px;
+  flex: none;
 }
 
 input[type="text"], select {
@@ -176,6 +198,7 @@ input[type="text"]:focus, select:focus {
 
 #caption { font-family: Anton, 'Arial Black', sans-serif; letter-spacing: 1px; font-size: 17px; }
 #subtitle { font-family: Pacifico, cursive; font-size: 17px; }
+#tagline { font-family: Anton, 'Arial Black', sans-serif; letter-spacing: 2px; font-size: 13px; text-transform: uppercase; }
 
 .range-row {
   display: flex;

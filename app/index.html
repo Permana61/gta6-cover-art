@@ -37,7 +37,14 @@
         <button type="button" class="choice" data-layout="grid9">Grid 9</button>
         <button type="button" class="choice" data-layout="bleed">Full Bleed</button>
         <button type="button" class="choice" data-layout="tilted">Tilted Snaps</button>
+        <button type="button" class="choice" data-layout="seven">7-Panel</button>
+        <button type="button" class="choice" data-layout="duo">Duo</button>
+        <button type="button" class="choice" data-layout="triptych">Triptych</button>
       </div>
+      <label class="check">
+        <input id="popoutToggle" type="checkbox" checked>
+        Pop-out hero — the hero panel breaks its frame
+      </label>
     </div>
 
     <div class="group">
@@ -47,13 +54,24 @@
         <button type="button" class="choice grade-neon" data-grade="neon">Neon</button>
         <button type="button" class="choice grade-gold" data-grade="gold">Gold Hour</button>
         <button type="button" class="choice grade-noir" data-grade="noir">Mono Noir</button>
+        <button type="button" class="choice grade-twilight" data-grade="twilight">Twilight</button>
+        <button type="button" class="choice grade-vice" data-grade="vice">Vice Pink</button>
+        <button type="button" class="choice grade-tealheat" data-grade="tealheat">Teal Heat</button>
+        <button type="button" class="choice grade-mono" data-grade="mono">Mono</button>
       </div>
+      <label class="check">
+        <input id="inkToggle" type="checkbox">
+        Poster Ink — painted look (posterize + edge ink)
+      </label>
     </div>
 
     <div class="group">
       <h2>4 · Words</h2>
       <label>Caption
         <input id="caption" type="text" maxlength="24" value="NEON COAST" autocomplete="off">
+      </label>
+      <label>Tagline
+        <input id="tagline" type="text" maxlength="40" value="LEONIDA · 2026" autocomplete="off">
       </label>
       <label>Subtitle
         <input id="subtitle" type="text" maxlength="40" value="chase the sunset" autocomplete="off">
@@ -70,7 +88,20 @@
     </div>
 
     <div class="group">
-      <h2>5 · Crop the selected panel</h2>
+      <h2>5 · Poster furniture</h2>
+      <label>Billing block
+        <input id="billing" type="text" maxlength="90" value="A NEON COAST PRODUCTION · STARRING YOU · IN CINEMAS SOON" autocomplete="off">
+      </label>
+      <label>Seal text
+        <input id="seal" type="text" maxlength="20" value="VICE CITY" autocomplete="off">
+      </label>
+      <label>Quote bar
+        <input id="quote" type="text" maxlength="60" value="" placeholder="A pull-quote for the poster…" autocomplete="off">
+      </label>
+    </div>
+
+    <div class="group">
+      <h2>6 · Crop the selected panel</h2>
       <p id="panelLabel" class="hint" role="status">Panel 1 of 4 · empty</p>
       <p class="hint">Click a panel on the preview to select it, drag it to move the photo, scroll over it to zoom.</p>
       <label>Zoom
@@ -79,10 +110,27 @@
           <span>1.00× – 3.00×</span>
         </span>
       </label>
+      <label class="check">
+        <input id="smartCropToggle" type="checkbox">
+        Smart crop — keep the face and the action in frame
+      </label>
+      <label>Role tag
+        <select id="roleSelect">
+          <option value="">— No role tag —</option>
+          <option value="THE DRIVER">The Driver</option>
+          <option value="THE FIXER">The Fixer</option>
+          <option value="THE LOOKOUT">The Lookout</option>
+          <option value="THE MUSCLE">The Muscle</option>
+          <option value="THE HACKER">The Hacker</option>
+          <option value="THE QUEEN">The Queen</option>
+          <option value="THE WHEELMAN">The Wheelman</option>
+          <option value="THE INSIDE MAN">The Inside Man</option>
+        </select>
+      </label>
     </div>
 
     <div class="group">
-      <h2>6 · Export</h2>
+      <h2>7 · Export</h2>
       <label>Size
         <select id="sizeSelect">
           <option value="1080x1080">Square · 1080 × 1080</option>
@@ -92,6 +140,9 @@
       </label>
       <div class="row">
         <button id="exportBtn" type="button" class="btn primary">Export PNG</button>
+        <button id="exportAllBtn" type="button" class="btn primary">Export all 3 sizes</button>
+      </div>
+      <div class="row">
         <button id="undoBtn" type="button" class="btn small" disabled>Undo</button>
         <button id="redoBtn" type="button" class="btn small" disabled>Redo</button>
       </div>

@@ -29,6 +29,7 @@ const CAPS = {
 };
 
 const MIN_SCREENSHOTS = 3;
+const EXPECTED_SCREENSHOTS = 4;
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
@@ -54,6 +55,7 @@ function checkInputs(): void {
 
 // Every screenshot must be a real file inside the 256 KiB cap, and there
 // must be enough of them to show the studio (the first by name is the cover).
+// Round 3 ships exactly four: two exported covers, the editor, one more cover.
 function checkScreenshots(): string[] {
   const dir = join(root, 'screenshots');
   const names = readdirSync(dir).sort();
@@ -62,6 +64,9 @@ function checkScreenshots(): string[] {
   }
   if (names.length > CAPS.screenshots.max) {
     fail(`too many screenshots: ${names.length} > ${CAPS.screenshots.max}`);
+  }
+  if (names.length !== EXPECTED_SCREENSHOTS) {
+    fail(`round 3 ships ${EXPECTED_SCREENSHOTS} screenshots, found ${names.length}`);
   }
   for (const name of names) {
     const path = join(dir, name);
@@ -96,8 +101,8 @@ function writeAndVerifyDossier(): void {
     if (!(field in parsed)) fail(`dossier.json is missing its "${field}" field`);
   }
   const images = parsed.images;
-  if (!Array.isArray(images) || images.length !== MIN_SCREENSHOTS) {
-    fail(`dossier.json lists ${Array.isArray(images) ? images.length : 'no'} images, expected ${MIN_SCREENSHOTS}`);
+  if (!Array.isArray(images) || images.length !== EXPECTED_SCREENSHOTS) {
+    fail(`dossier.json lists ${Array.isArray(images) ? images.length : 'no'} images, expected ${EXPECTED_SCREENSHOTS}`);
   }
   if (typeof parsed.cover !== 'number' || parsed.cover < 0 || parsed.cover >= images.length) {
     fail(`dossier.json has an invalid cover index: ${String(parsed.cover)}`);
